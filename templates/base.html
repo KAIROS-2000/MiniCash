@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}MiniCash{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <!-- Chart.js для диаграмм -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      defer
+    ></script>
+  </head>
+  <body class="theme-sber">
+    {% if current_user.is_authenticated %}
+    <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-logo-circle"></div>
+          <div class="topbar-brand">
+            <div class="topbar-title">MiniCash</div>
+            <div class="topbar-subtitle">Простой личный финтех</div>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="topbar-user">
+            <div class="topbar-user-avatar"></div>
+            <div class="topbar-user-meta">
+              <div class="topbar-user-name">
+                {{ current_user.name if current_user.is_authenticated else "Гость" }}
+              </div>
+              <div class="topbar-user-status">Онлайн</div>
+            </div>
+          </div>
+
+          {% if current_user.is_authenticated %}
+          <a href="{{ url_for('logout') }}" class="topbar-logout">
+            Выйти
+          </a>
+          {% endif %}
+        </div>
+      </header>
+    {% endif %}
+
+    <div class="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
+    </div>
+
+    <!-- Глобальный лоадер при действиях -->
+    <div id="global-loader" class="loader-backdrop">
+      <div class="loader-orbit">
+        <div class="loader-orbit-dot"></div>
+      </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- Ripple эффект для кликаемых элементов ---
+        function createRipple(event) {
+          const button = event.currentTarget;
+          const rect = button.getBoundingClientRect();
+          const circle = document.createElement("span");
+          const diameter = Math.max(button.clientWidth, button.clientHeight);
+          const radius = diameter / 2;
+
+          circle.style.width = circle.style.height = `${diameter}px`;
+          circle.style.left = `${event.clientX - rect.left - radius}px`;
+          circle.style.top = `${event.clientY - rect.top - radius}px`;
+          circle.classList.add("ripple");
+
+          const existingRipple = button.getElementsByClassName("ripple")[0];
+          if (existingRipple) {
+            existingRipple.remove();
+          }
+
+          button.appendChild(circle);
+        }
+
+        document
+          .querySelectorAll(
+            ".btn-primary, .period-btn, .nav-item, .tx-link, .topbar-link"
+          )
+          .forEach((el) => {
+            el.classList.add("btn-ripple");
+            el.addEventListener("click", createRipple);
+          });
+
+        // --- Лоадер на отправке форм ---
+        const loader = document.getElementById("global-loader");
+        document.querySelectorAll("form").forEach((form) => {
+          form.addEventListener("submit", () => {
+            document.body.classList.add("is-loading");
+            loader.classList.add("loader-visible");
+          });
+        });
+
+        // --- Авто-скрытие flash-сообщений ---
+        setTimeout(() => {
+          document.querySelectorAll(".flash").forEach((f) => {
+            f.classList.add("flash-hide");
+          });
+        }, 2800);
+
+        // --- Плавное появление основного контента ---
+        const appRoot = document.querySelector(".app, .auth-wrapper");
+        if (appRoot) {
+          appRoot.classList.add("fade-in-up");
+        }
+
+          // --- Активный пункт в сайдбаре при клике ---
+      const navLinks = document.querySelectorAll(".nav-item-link");
+      navLinks.forEach((link) => {
+        link.addEventListener("click", function () {
+          navLinks.forEach((l) => l.classList.remove("active"));
+          this.classList.add("active");
+        });
+      });
+
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+{% block title %}MiniCash – Дашборд{% endblock %}
+{% block content %}
+<div class="app">
+
+  <!-- Левый сайдбар -->
+  <aside class="sidebar">
+    <div>
+      <div class="logo">MiniCash</div>
+      <nav class="nav">
+        <a href="#overview" class="nav-item nav-item-link active">
+          <span class="nav-dot"></span> Обзор
+        </a>
+        <a href="#transactions" class="nav-item nav-item-link">
+          <span class="nav-dot"></span> Транзакции
+        </a>
+        <a href="#analytics" class="nav-item nav-item-link">
+          <span class="nav-dot"></span> Аналитика
+        </a>
+        <a href="#top-expenses" class="nav-item nav-item-link">
+          <span class="nav-dot"></span> Крупные траты
+        </a>
+      </nav>
+    </div>
+<!--    <div class="sidebar-footer">-->
+<!--      <div class="avatar"></div>-->
+<!--      <div>-->
+<!--        <div style="font-size: 14px; font-weight: 500">-->
+<!--          {{ current_user.name }}-->
+<!--        </div>-->
+<!--        <div style="font-size: 12px; color: var(&#45;&#45;text-secondary)">Онлайн</div>-->
+<!--      </div>-->
+<!--    </div>-->
+  </aside>
+
+  <!-- Центральный контент -->
+  <main class="main">
+    <header class="main-header">
+      <div class="main-title">Обзор финансов</div>
+      <div class="period-switch">
+        <a
+          href="{{ url_for('dashboard', period='week') }}"
+          class="period-btn {% if current_period == 'week' %}active{% endif %}"
+        >
+          Неделя
+        </a>
+        <a
+          href="{{ url_for('dashboard', period='month') }}"
+          class="period-btn {% if current_period == 'month' %}active{% endif %}"
+        >
+          Месяц
+        </a>
+        <a
+          href="{{ url_for('dashboard', period='year') }}"
+          class="period-btn {% if current_period == 'year' %}active{% endif %}"
+        >
+          Год
+        </a>
+        <a href="{{ url_for('dashboard', period='all') }}"
+           class="period-btn {% if current_period == 'all' %}active{% endif %}">
+            Всё время
+        </a>
+      </div>
+    </header>
+
+    <!-- Баланс и быстрый ввод -->
+    <section class="main-grid">
+      <!-- Баланс -->
+      <article class="card card--accent" id="overview">
+        <div class="card-header">
+          <span>Баланс кошелька</span>
+<!--          <span style="font-size: 12px">Обновлено: сегодня</span>-->
+        </div>
+        <div class="card-value">{{ balance|currency }}</div>
+        <div class="card-sub">
+          Доходы: {{ total_income|currency }} · Расходы:
+          {{ total_expense|currency }}
+        </div>
+      </article>
+
+      <!-- Быстро добавить -->
+      <article class="card">
+        <div class="card-header">
+<!--          <span>Добавление трат/доходов</span>-->
+<!--          <span style="font-size: 12px; color: var(&#45;&#45;text-secondary)">-->
+<!--            за пару кликов-->
+<!--          </span>-->
+        </div>
+
+        <form
+          class="quick-add-form"
+          action="{{ url_for('add_transaction') }}"
+          method="post"
+        >
+          <div class="quick-type-switch">
+            <label>
+              <input
+                type="radio"
+                name="type"
+                value="expense"
+                checked
+                onclick="toggleCategorySelect('expense')"
+              />
+              <span>Расход</span>
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="type"
+                value="income"
+                onclick="toggleCategorySelect('income')"
+              />
+              <span>Доход</span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Сумма"
+              name="amount"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <!-- категории расходов -->
+            <select name="category_id" id="expense-select">
+              {% for cat in expense_categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+
+            <!-- категории доходов -->
+            <select
+              name="category_id"
+              id="income-select"
+              style="display: none"
+              disabled
+            >
+              {% for cat in income_categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-row">
+            <input
+              type="date"
+              name="date"
+              value="{{ today }}"
+            />
+          </div>
+
+          <div class="form-row">
+            <input
+              type="text"
+              name="description"
+              placeholder="Комментарий (необязательно)"
+            />
+          </div>
+
+          <div class="form-row">
+            <button class="btn-primary" type="submit">Сохранить</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <!-- Диаграммы и транзакции -->
+    <section class="main-grid">
+      <!-- Диаграммы -->
+      <article class="card" id="analytics">
+        <div class="card-header">
+          <span>Расходы по категориям</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="expenseChart"></canvas>
+        </div>
+
+        <div class="card-header" style="margin-top: 10px">
+          <span>Доходы vs Расходы</span>
+        </div>
+        <div class="chart-wrapper small">
+          <canvas id="incomeExpenseChart"></canvas>
+        </div>
+      </article>
+
+      <!-- Последние транзакции -->
+      <article class="card" id="transactions">
+        <div class="transactions-header">
+          <span>Последние транзакции</span>
+        </div>
+
+        {% set icon_map = {
+          'Еда': 'food.jpg',
+          'Транспорт': 'transport.jpg',
+          'Аренда': 'home.jpg',
+          'Развлечения': 'fun.jpg',
+          'Зарплата': 'salary.jpg',
+          'Подарки': 'gift.jpg',
+          'Продажи': 'sale.jpg',
+          'Другое': 'other.jpg'
+        } %}
+
+        <div class="transactions-list">
+          {% for tx in transactions %}
+          <div class="transaction-row">
+            <div class="transaction-icon">
+              <img
+                src="{{ url_for('static', filename='icons/categories/' ~ icon_map.get(tx.category.name, 'other.jpg')) }}"
+                alt="icon"
+              />
+            </div>
+
+            <div class="transaction-meta">
+              <div class="transaction-category">
+                {{ tx.category.name }}
+                <span class="tx-date">
+                  · {{ tx.created_at.strftime('%d.%m') }}
+                </span>
+              </div>
+              {% if tx.description %}
+              <div class="transaction-note">{{ tx.description }}</div>
+              {% endif %}
+            </div>
+
+            <div
+              class="transaction-amount {% if tx.type=='expense' %}expense{% else %}income{% endif %}"
+            >
+              {% if tx.type == 'expense' %}-{% else %}+{% endif %}
+              {{ tx.amount|currency }}
+            </div>
+
+            <div class="transaction-actions">
+              <a
+                href="{{ url_for('edit_transaction', tx_id=tx.id) }}"
+                class="tx-link"
+              >
+                <img
+                  src="{{ url_for('static', filename='icons/edit.jpg') }}"
+                  class="tx-action-icon"
+                  alt="edit"
+                  typeof="svg"
+                />
+              </a>
+              <form
+                  action="{{ url_for('delete_transaction', tx_id=tx.id) }}"
+                  method="post"
+                  class="delete-form"
+                >
+                  <button
+                    type="button"
+                    class="tx-link tx-delete"
+                    onclick="handleDeleteClick(this)"
+                  >
+                    <img
+                      src="{{ url_for('static', filename='icons/delete.jpg') }}"
+                      class="tx-action-icon"
+                      alt="delete"
+                    />
+                  </button>
+              </form>
+            </div>
+          </div>
+          {% else %}
+          <p style="font-size: 14px; color: var(--text-secondary)">
+            Пока нет транзакций. Добавьте первую операцию.
+          </p>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <!-- Правый сайдбар: Крупнейшие траты -->
+  <aside class="aside">
+    <article class="card" id="top-expenses">
+      <div class="card-header">
+        <span>Крупнейшие траты</span>
+      </div>
+
+      <div class="top-expenses-list">
+        {% for tx in top_expenses %}
+        {% set width = 100 - (loop.index0 * 20) %}
+        <div>
+          <div class="top-expense-item">
+            <span>
+              {{ tx.category.name }}{% if tx.description %} – {{ tx.description }}{% endif %}
+            </span>
+            <span>{{ tx.amount|currency }}</span>
+          </div>
+          <div class="top-expense-bar">
+            <div
+              class="top-expense-bar-fill"
+              style="width: {{ width }}%;"
+            ></div>
+          </div>
+        </div>
+        {% else %}
+        <p style="font-size: 14px; color: var(--text-secondary)">
+          Нет крупных трат.
+        </p>
+        {% endfor %}
+      </div>
+    </article>
+  </aside>
+</div>
+
+<script>
+  // Переключение селекта категорий (расход/доход)
+  function toggleCategorySelect(type) {
+    const expenseSelect = document.getElementById("expense-select");
+    const incomeSelect = document.getElementById("income-select");
+
+    if (type === "expense") {
+      expenseSelect.style.display = "block";
+      expenseSelect.disabled = false;
+
+      incomeSelect.style.display = "none";
+      incomeSelect.disabled = true;
+    } else {
+      expenseSelect.style.display = "none";
+      expenseSelect.disabled = true;
+
+      incomeSelect.style.display = "block";
+      incomeSelect.disabled = false;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // начальное состояние — "Расход"
+    toggleCategorySelect("expense");
+
+    // активный пункт в сайдбаре по клику
+    const navLinks = document.querySelectorAll(".nav-item-link");
+    navLinks.forEach((link) => {
+      link.addEventListener("click", function () {
+        navLinks.forEach((l) => l.classList.remove("active"));
+        this.classList.add("active");
+      });
+    });
+
+    // Диаграммы
+    const expenseCtx = document
+      .getElementById("expenseChart")
+      .getContext("2d");
+    const incomeExpenseCtx = document
+      .getElementById("incomeExpenseChart")
+      .getContext("2d");
+
+    const expenseLabels = {{ expense_labels|tojson|safe }};
+    const expenseValues = {{ expense_values|tojson|safe }};
+
+    const incomeExpenseLabels = {{ income_vs_expense_labels|tojson|safe }};
+    const incomeExpenseValues = {{ income_vs_expense_values|tojson|safe }};
+
+    new Chart(expenseCtx, {
+      type: "doughnut",
+      data: {
+        labels: expenseLabels,
+        datasets: [
+          {
+            data: expenseValues,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          legend: { position: "bottom" },
+        },
+        cutout: "55%",
+      },
+    });
+
+    new Chart(incomeExpenseCtx, {
+      type: "doughnut",
+      data: {
+        labels: incomeExpenseLabels,
+        datasets: [
+          {
+            data: incomeExpenseValues,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          legend: { position: "bottom" },
+        },
+        cutout: "60%",
+      },
+    });
+  });
+
+  function handleDeleteClick(button) {
+    const form = button.closest("form");
+    if (!form) return;
+
+    if (confirm("Удалить операцию?")) {
+      form.submit(); // вот здесь только сейчас срабатывает submit и лоадер
+    }
+  }
+</script>
+{% endblock %}

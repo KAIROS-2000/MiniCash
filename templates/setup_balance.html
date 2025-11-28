@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+<!--{% set no_layout = true %}-->
+{% block title %}Начальный баланс – MiniCash{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <h1>Укажи текущий баланс</h1>
+
+    <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+      Это нужно один раз при первом запуске. Мы будем считать все операции
+      относительно этой суммы.
+    </p>
+
+    <form method="post">
+      <label>
+        Текущий баланс кошелька
+        <input
+          type="number"
+          step="0.01"
+          name="initial_balance"
+          placeholder="Например, 15000"
+          required
+        />
+      </label>
+
+      <button type="submit" class="btn-primary" style="width: 100%; margin-top: 12px;">
+        Сохранить баланс
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

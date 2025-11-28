@@ -1,0 +1,36 @@
+{% extends "base.html" %} {% block title %}MiniCash – Регистрация{% endblock %}
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <h1>Регистрация в MiniCash</h1>
+    <form method="post" action="{{ url_for('register') }}">
+      <label>
+        Имя
+        <input type="text" name="name" required />
+      </label>
+
+      <label>
+        Email
+        <input type="email" name="email" required />
+      </label>
+
+      <label>
+        Пароль
+        <input type="password" name="password" required />
+      </label>
+
+      <label>
+        Повторите пароль
+        <input type="password" name="confirm" required />
+      </label>
+
+      <button type="submit" class="btn-primary">Создать аккаунт</button>
+    </form>
+
+    <p class="auth-footer">
+      Уже есть аккаунт?
+      <a href="{{ url_for('login') }}">Войти</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
