@@ -31,7 +31,31 @@
 <!--        <div style="font-size: 12px; color: var(&#45;&#45;text-secondary)">Онлайн</div>-->
 <!--      </div>-->
 <!--    </div>-->
+      <br>
+
+      {% if currency_rates %}
+  <div class="currency-card">
+    <div class="currency-card-header">
+      <div class="currency-card-title">Курс валют</div>
+    </div>
+
+    <div class="currency-list">
+      {% for code in ['USD', 'EUR', 'KZT', 'CNY', 'BYN'] %}
+        {% if currency_rates.get(code) %}
+          <div class="currency-row">
+            <span class="currency-tag">{{ code }}</span>
+            <span class="currency-value">
+              {{ '%.2f'|format(currency_rates[code]) }} ₽
+            </span>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
   </aside>
+
+
 
   <!-- Центральный контент -->
   <main class="main">
@@ -70,8 +94,35 @@
         <div class="card-header">
           <span>Баланс кошелька</span>
 <!--          <span style="font-size: 12px">Обновлено: сегодня</span>-->
-        </div>
-        <div class="card-value">{{ balance|currency }}</div>
+                {# таблетка переключения валют – ТЕПЕРЬ БЕЗ href #}
+            <div class="currency-pill" id="currency-pill" data-current="RUB">
+              <button type="button"
+                      class="currency-pill-btn active"
+                      data-cur="RUB">
+                ₽
+              </button>
+              <button type="button"
+                      class="currency-pill-btn"
+                      data-cur="USD">
+                $
+              </button>
+              <button type="button"
+                      class="currency-pill-btn"
+                      data-cur="EUR">
+                €
+              </button>
+            </div>
+          </div>
+
+          {# значение баланса – добавляем data-* с базой и курсами #}
+          <div class="card-value"
+               id="wallet-balance-value"
+               data-balance-rub="{{ display_balance }}"
+               data-rate-usd="{{ currency_rates.get('USD', '') }}"
+               data-rate-eur="{{ currency_rates.get('EUR', '') }}">
+            {{ "{:,.2f}".format(display_balance).replace(",", " ").replace(".", ",") }} ₽
+          </div>
+
         <div class="card-sub">
           Доходы: {{ total_income|currency }} · Расходы:
           {{ total_expense|currency }}
@@ -308,6 +359,39 @@
     </article>
   </aside>
 </div>
+
+{% if currency_rates %}
+  <!-- Кнопка для мобильных -->
+  <button class="currency-fab btn-ripple" id="currency-toggle">
+    <span>Курс валют</span>
+  </button>
+
+  <!-- Выезжающая панель с курсами -->
+  <div class="currency-drawer" id="currency-drawer">
+    <div class="currency-drawer-inner">
+      <div class="currency-drawer-header">
+        <span class="currency-drawer-title">Курс валют</span>
+        <button class="currency-drawer-close" id="currency-close" aria-label="Закрыть">
+          ×
+        </button>
+      </div>
+
+      <div class="currency-list">
+        {% for code in ['USD', 'EUR', 'KZT', 'CNY', 'BYN'] %}
+          {% if currency_rates.get(code) %}
+            <div class="currency-row">
+              <span class="currency-tag">{{ code }}</span>
+              <span class="currency-value">
+                {{ '%.2f'|format(currency_rates[code]) }} ₽
+              </span>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endif %}
+
 
 <script>
   // Переключение селекта категорий (расход/доход)

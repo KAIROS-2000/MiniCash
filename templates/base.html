@@ -126,7 +126,84 @@
         });
       });
 
+      //Valuti
+
+          var toggleBtn = document.getElementById('currency-toggle');
+    var drawer = document.getElementById('currency-drawer');
+    var closeBtn = document.getElementById('currency-close');
+
+    if (!toggleBtn || !drawer) return;
+
+    function toggleDrawer() {
+      drawer.classList.toggle('currency-drawer--open');
+    }
+
+    toggleBtn.addEventListener('click', toggleDrawer);
+    if (closeBtn) {
+      closeBtn.addEventListener('click', toggleDrawer);
+    }
+
+    // закрытие по клику на фон
+    drawer.addEventListener('click', function (e) {
+      if (e.target === drawer) {
+        toggleDrawer();
+      }
+    });
+
       });
     </script>
+      <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const balanceEl = document.getElementById('wallet-balance-value');
+        const pill = document.getElementById('currency-pill');
+        if (!balanceEl || !pill) return;
+
+        const buttons = pill.querySelectorAll('.currency-pill-btn');
+
+        const balanceRub = parseFloat(balanceEl.dataset.balanceRub || '0');
+        const rateUsd = parseFloat(balanceEl.dataset.rateUsd || '0');
+        const rateEur = parseFloat(balanceEl.dataset.rateEur || '0');
+
+        function formatAmount(value) {
+          return value.toLocaleString('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        }
+
+        function updateBalance(cur) {
+          let value = balanceRub;
+          let symbol = '₽';
+
+          if (cur === 'USD' && rateUsd > 0) {
+            value = balanceRub / rateUsd;
+            symbol = '$';
+          } else if (cur === 'EUR' && rateEur > 0) {
+            value = balanceRub / rateEur;
+            symbol = '€';
+          }
+
+          balanceEl.textContent = formatAmount(value) + ' ' + symbol;
+          pill.dataset.current = cur;
+
+          // подсветка активной кнопки
+          buttons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.cur === cur);
+          });
+        }
+
+        // обработчики клика по кнопкам
+        buttons.forEach(btn => {
+          btn.addEventListener('click', function () {
+            const cur = this.dataset.cur;
+            updateBalance(cur);
+          });
+        });
+
+        // начальное состояние (на всякий случай)
+        updateBalance(pill.dataset.current || 'RUB');
+      });
+    </script>
+
   </body>
 </html>

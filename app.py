@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+import requests
 
 from dotenv import load_dotenv
 from flask import (
@@ -43,6 +44,30 @@ db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
+
+#Запрос валют
+
+def fetch_currency_rates():
+    """
+    Курсы валют по отношению к рублю от ЦБ:
+    USD, EUR, KZT, CNY, BYN.
+    """
+    try:
+        resp = requests.get("https://www.cbr-xml-daily.ru/daily_json.js", timeout=3)
+        data = resp.json()
+        valute = data.get("Valute", {})
+        codes = ["USD", "EUR", "KZT", "CNY", "BYN"]
+        rates = {}
+        for code in codes:
+            info = valute.get(code)
+            if info:
+                # Value – стоимость 1 единицы валюты в рублях
+                rates[code] = round(info["Value"], 2)
+        return rates
+    except Exception:
+        # если API недоступно – просто пустой словарь,
+        # виджет в шаблоне не отрисуется
+        return {}
 
 # ------------------------------------------------------------------------------
 # Модели
@@ -291,7 +316,7 @@ def dashboard():
         start_date = today.replace(month=1, day=1)
     elif period == "all":
         # минимальное изменение: очень ранняя дата, чтобы захватить все транзакции
-        start_date = date(1970, 1, 1)
+        start_date = date(1900, 1, 1)
     else:
         start_date = today.replace(day=1)
 
@@ -365,6 +390,23 @@ def dashboard():
         user_id=user_id, type="income"
     ).all()
 
+    currency_rates = fetch_currency_rates()
+
+    current_currency = request.args.get("cur", "RUB")  # RUB / USD / EUR
+
+    balance_rub = balance
+    factor = 1.0
+    currency_symbol = "₽"
+
+    if current_currency == "USD" and currency_rates.get("USD"):
+        factor = 1 / currency_rates["USD"]
+        currency_symbol = "$"
+    elif current_currency == "EUR" and currency_rates.get("EUR"):
+        factor = 1 / currency_rates["EUR"]
+        currency_symbol = "€"
+
+    display_balance = float(balance_rub) * factor
+
     return render_template(
         "dashboard.html",
         balance=balance,
@@ -379,6 +421,9 @@ def dashboard():
         expense_categories=expense_categories,
         income_categories=income_categories,
         current_period=period,
+        currency_rates=currency_rates,
+        currency_symbol = currency_symbol,
+        display_balance = display_balance,
         today=today,
     )
 
